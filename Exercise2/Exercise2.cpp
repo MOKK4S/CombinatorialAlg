@@ -74,7 +74,6 @@ bool is_conjected(const Graph &graph) {
         return true;
     }
 
-    // Determine whether the input uses 0-based or 1-based vertex labels.
     const size_t index_offset = graph.index_offset;
 
     for (const auto &edge : graph.edges) {
@@ -105,6 +104,49 @@ bool is_conjected(const Graph &graph) {
     return true;
 }
 
+bool is_linear(const Graph &graph) {
+    if (graph.node_count == 0) {
+        return true;
+    }
+
+    const size_t index_offset = graph.index_offset;
+
+    vector<size_t> degree(graph.node_count, 0);
+
+    for (const auto &edge : graph.edges) {
+        if (edge.first < index_offset || edge.second < index_offset) {
+            return false;
+        }
+
+        const size_t u = edge.first - index_offset;
+        const size_t v = edge.second - index_offset;
+
+        if (u >= graph.node_count || v >= graph.node_count) {
+            return false;
+        }
+
+        if (u == v) {
+            degree[u] += 2;
+            if (degree[u] > 2) {
+                return false;
+            }
+            continue;
+        }
+
+        ++degree[u];
+        if (degree[u] > 2) {
+            return false;
+        }
+
+        ++degree[v];
+        if (degree[v] > 2) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int main() {
     Graph graph = load_graph();
 
@@ -115,7 +157,8 @@ int main() {
 
     const bool conjugated = is_conjected(graph);
     cout << "Graph is conjugated: " << boolalpha << conjugated << '\n';
-
+    const bool linear = is_linear(graph);
+    cout << "Graph is linear: " << boolalpha << linear << '\n';
     export_graph(graph);
     return 0;
 
