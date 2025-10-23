@@ -147,6 +147,8 @@ bool is_linear(const Graph &graph) {
     return true;
 }
 
+
+
 int main() {
     Graph graph = load_graph();
 
