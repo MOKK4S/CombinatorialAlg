@@ -10,6 +10,7 @@
 
 using namespace std;
 
+// Struktura przechowująca skierowany graf oraz informację o offsetcie numeracji.
 struct Graph {
     size_t node_count{};
     size_t index_offset{};
@@ -20,6 +21,7 @@ struct Graph {
     }
 };
 
+// Wczytuje graf z pliku (nagłówek: liczba wierzchołków i krawędzi, następnie pary wierzchołków).
 Graph load_graph_from_file(const string &path) {
     ifstream input(path);
     if (!input.is_open()) {
@@ -62,6 +64,7 @@ Graph load_graph_from_file(const string &path) {
     return graph;
 }
 
+// Zapisuje graf w tym samym formacie do wskazanego pliku.
 void save_graph_to_file(const Graph &graph, const string &path) {
     ofstream output(path);
     if (!output.is_open()) {
@@ -74,6 +77,7 @@ void save_graph_to_file(const Graph &graph, const string &path) {
     }
 }
 
+// Najprostsza implementacja struktury DSU potrzebnej do sklejanek wierzchołków.
 struct DisjointSet {
     vector<size_t> parent;
     vector<size_t> rank;
@@ -109,6 +113,7 @@ struct DisjointSet {
     }
 };
 
+// Buduje kandydat na graf oryginalny H z grafu sprzężonego G.
 Graph restore_original_graph(const Graph &graph) {
     Graph original{};
     if (graph.node_count == 0) {
@@ -160,6 +165,7 @@ Graph restore_original_graph(const Graph &graph) {
     return original;
 }
 
+// Tworzy graf liniowy (sprzężony) z grafu oryginalnego H.
 Graph build_line_graph(const Graph &original, size_t vertex_count, size_t index_offset) {
     Graph line{};
     line.node_count = vertex_count;
@@ -176,12 +182,14 @@ Graph build_line_graph(const Graph &original, size_t vertex_count, size_t index_
     return line;
 }
 
+// Przygotowuje uporządkowaną listę krawędzi do porównań.
 vector<pair<size_t, size_t>> sorted_edge_list(const Graph &graph) {
     vector<pair<size_t, size_t>> edges = graph.edges;
     sort(edges.begin(), edges.end());
     return edges;
 }
 
+// Sprawdza równoważność grafów (permutacje krawędzi są dozwolone).
 bool are_graphs_equivalent(const Graph &lhs, const Graph &rhs) {
     if (lhs.node_count != rhs.node_count || lhs.index_offset != rhs.index_offset ||
         lhs.edge_count() != rhs.edge_count()) {
@@ -191,6 +199,7 @@ bool are_graphs_equivalent(const Graph &lhs, const Graph &rhs) {
     return sorted_edge_list(lhs) == sorted_edge_list(rhs);
 }
 
+// Weryfikuje, czy graf wejściowy jest grafem sprzężonym oraz zwraca H.
 bool is_conjugated_graph(const Graph &graph, Graph &original) {
     if (graph.node_count == 0) {
         original = Graph{};
@@ -212,6 +221,7 @@ bool is_conjugated_graph(const Graph &graph, Graph &original) {
     return true;
 }
 
+// Sprawdza, czy graf jest liniowy (czyli tworzy jedną ścieżkę prostą).
 bool is_linear_graph(const Graph &graph) {
     if (graph.node_count == 0) {
         return true;
@@ -295,6 +305,7 @@ bool is_linear_graph(const Graph &graph) {
 }
 
 int main(int argc, char **argv) {
+    // Obsługa ścieżek wejścia/wyjścia przekazanych w argumentach.
     string input_path = "Exercise2/graph.txt";
     string output_path = "Exercise2/graph_out.txt";
     if (argc > 1) {
@@ -305,11 +316,13 @@ int main(int argc, char **argv) {
     }
 
     try {
+        // Wczytanie grafu i przygotowanie struktur pomocniczych.
         const Graph graph = load_graph_from_file(input_path);
         Graph original;
         const bool conjugated = is_conjugated_graph(graph, original);
         const bool linear = conjugated && is_linear_graph(graph);
 
+        // Raportowanie wyników testów i zapis H, jeśli to możliwe.
         cout << "Vertices: " << graph.node_count << ", edges: " << graph.edge_count() << '\n';
         cout << "Graf sprzężony: " << boolalpha << conjugated << '\n';
         if (conjugated) {
