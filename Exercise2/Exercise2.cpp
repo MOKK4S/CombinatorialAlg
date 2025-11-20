@@ -244,6 +244,22 @@ bool graphs_equal(const Graph &lhs, const Graph &rhs) {
     return lhs_edges == rhs_edges;
 }
 
+bool is_one_graph(const Graph &graph) {
+    if (graph.edges.empty()) {
+        return true;
+    }
+
+    vector<pair<size_t, size_t>> edges = graph.edges;
+    sort(edges.begin(), edges.end());
+    for (size_t i = 1; i < edges.size(); ++i) {
+        if (edges[i] == edges[i - 1]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool recover_original_graph(const Graph &graph, Graph &original_graph) {
     Graph candidate = build_candidate_original(graph);
     Graph reconstructed = build_line_digraph(candidate);
@@ -337,6 +353,9 @@ int main(int argc, char **argv) {
         Graph graph = load_graph(input_candidates, resolved_input);
         cout << "Loaded graph from " << resolved_input << " with " << graph.node_count << " vertices and "
              << graph.edges.size() << " edges.\n";
+
+        const bool one_graph = is_one_graph(graph);
+        cout << "Graph is one-graph (no multiple edges): " << boolalpha << one_graph << '\n';
 
         Graph original_graph;
         const bool conjugated = recover_original_graph(graph, original_graph);
