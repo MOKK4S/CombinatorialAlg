@@ -4,6 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 using namespace std;
 
@@ -29,16 +30,21 @@ bool load_graph(const string& path, vector<vector<int>>& graph)
     edges.reserve(edge_count);
     bool uses_zero_index = false;
 
-    for (int i = 0; i < edge_count; i++)
+    string line;
+    while (getline(file, line))
     {
+        if (line.empty()) continue;
+        istringstream iss(line);
+
         int from = 0;
         int to = 0;
-        file >> from >> to;
-        if (!file)
-        {
-            cerr << "Niepoprawny format lukow w pliku: " << path << "\n";
-            return false;
-        }
+
+        if (!(iss >> from))
+            continue; 
+
+        if (!(iss >> to))
+            continue;
+
         if (from == 0 || to == 0)
             uses_zero_index = true;
 
@@ -63,6 +69,8 @@ bool load_graph(const string& path, vector<vector<int>>& graph)
 
     return true;
 }
+
+
 
 bool save_graph(const vector<vector<int>>& graph, const string& path)
 {
@@ -172,6 +180,21 @@ bool is_line_graph(const vector<vector<int>>& graph)
     return true;
 }
 
+bool has_multiple_edges(const vector<vector<int>>& graph)
+{
+    for (const auto& neighbors : graph)
+    {
+        vector<int> sorted = neighbors;
+        sort(sorted.begin(), sorted.end());
+        for (size_t i = 1; i < sorted.size(); i++)
+        {
+            if (sorted[i] == sorted[i - 1])
+                return true;
+        }
+    }
+    return false;
+}
+
 vector<pair<int, int>> build_H_edges(const vector<vector<int>>& graph)
 {
     int node_count = graph.size();
@@ -251,6 +274,9 @@ int main()
 
     cout << "Wczytano graf z pliku " << input_name << endl;
     save_graph(graph, output_name);
+
+    if (has_multiple_edges(graph))
+        cout << "multiiiiii graf uwaga !!!!!!!" << endl;
 
     if (is_G_graph(graph))
     {

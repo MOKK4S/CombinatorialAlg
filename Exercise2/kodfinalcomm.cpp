@@ -7,6 +7,7 @@
 #include <string>
 #include <algorithm>
 #include <map>
+#include <sstream>
 
 using namespace std;
 
@@ -38,17 +39,24 @@ bool load_graph(const string& path, vector<vector<int>>& graph)
     edges.reserve(edge_count);
     bool uses_zero_index = false;
 
-    // Wczytanie łuków; zapamiętujemy, czy pojawiło się 0.
-    for (int i = 0; i < edge_count; i++)
+    // Wczytanie łuków linia po linii; linie z samym numerem wierzchołka
+    // traktujemy jako "brak krawędzi wychodzących" (pomocne przy grafach z wierzchołkami izolowanymi).
+    string line;
+    while (getline(file, line))
     {
+        if (line.empty()) continue;
+        istringstream iss(line);
+
         int from = 0;
         int to = 0;
-        file >> from >> to;
-        if (!file)
-        {
-            cerr << "Niepoprawny format lukow w pliku: " << path << "\n";
-            return false;
-        }
+
+        if (!(iss >> from))
+            continue; // pusta linia po trimie
+
+        // Jeśli nie ma drugiej liczby, zostawiamy wierzchołek bez krawędzi.
+        if (!(iss >> to))
+            continue;
+
         if (from == 0 || to == 0)
             uses_zero_index = true;
 
@@ -193,6 +201,22 @@ bool is_line_graph(const vector<vector<int>>& graph)
     return true;
 }
 
+// Wykrywa krawędzie wielokrotne (ten sam łuk zapisany więcej niż raz).
+bool has_multiple_edges(const vector<vector<int>>& graph)
+{
+    for (const auto& neighbors : graph)
+    {
+        vector<int> sorted = neighbors;
+        sort(sorted.begin(), sorted.end());
+        for (size_t i = 1; i < sorted.size(); i++)
+        {
+            if (sorted[i] == sorted[i - 1])
+                return true;
+        }
+    }
+    return false;
+}
+
 // Tworzy łuki grafu H odpowiadającego grafowi G:
 // każdy wierzchołek i ma parę (2*i, 2*i+1).
 // Następnie "sklejamy" końce według krawędzi G.
@@ -279,6 +303,9 @@ int main()
 
     cout << "Wczytano graf z pliku " << input_name << endl;
     save_graph(graph, output_name); // Kopia wejścia w formacie wyjściowym.
+
+    if (has_multiple_edges(graph))
+        cout << "uwaga: graf zawiera krawedzie wielokrotne (multigraf)" << endl;
 
     if (is_G_graph(graph))
     {
