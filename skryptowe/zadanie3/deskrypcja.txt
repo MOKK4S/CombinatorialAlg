@@ -1,0 +1,14 @@
+1.      Dla sekwencji DNA wylicz jej tzw. GC-content.
+
+2.      Wylicz częstotliwości występowania zasad (ACGT) w sekwencjach DNA. Program powinien przyjmować na wejściu dowolną liczbę sekwencji i wypisać zbiorczą statystykę (po jednej kolumnie na sekwencję)
+
+3.      Wygeneruj tzw. dotplot dla dwóch sekwencji  –tj. macierz pokazującą podobieństwo sekwencji na poszczególnych pozycjach.
+
+4.      Dla pliku PDB wylicz częstotliwość występowania aminokwasów w podanym modelu i/lub łańcuchu.
+
+5.      Wylicz statystyki kodonów i aminokwasów dla danych sekwencji kodujących. Dla każdego aminokwasu przedstaw statystyki kodujących go kodonów.
+
+6.      Wylicz mapy kontaktów dla łańcuchów polipeptydowych (białek) i RNA.
+Artykuły dot. kontaktów:
+https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-13-292
+https://bmcbioinformatics.biomedcentral.com/track/pdf/10.1186/1471-2105-13-333.pdf

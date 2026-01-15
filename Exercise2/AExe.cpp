@@ -172,7 +172,7 @@ bool is_conjugated_graph(const Graph &graph, Graph &original_graph) {
         return false;
     }
 
-    Graph candidate = build_original_candidate(graph);
+    Graph candidate =   (graph);
     Graph rebuilt = build_line_graph(candidate);
     if (!graphs_equal(graph, rebuilt)) {
         return false;

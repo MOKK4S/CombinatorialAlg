@@ -1,0 +1,75 @@
+Zadanie 1. 
+Pobierz cztery pliki z PDB z sekwencją (2x) i strukturą białka (2x) (np. 1fnt i 3l5q (pdb) 4V7O(fasta)) [spróbuj użyć wget] 
+Adres:
+a)Struktura
+https://files.rcsb.org/download/1FNT.pdb
+
+b)Sekwencja
+https://www.rcsb.org/fasta/entry/1FNT
+Adresy dla 3L5Q i 4V7O są analogiczne.
+Zobacz przy użyciu less jak te pliki wyglądają.
+
+Zadanie 2. 
+Wyświetl plik 1FNT.pdb z podziałem na strony przyjmując, że strona ma 10 linii tekstu. 
+
+Zadanie 3. 
+Korzystając z polecenia cat utwórz plik moje_sekwencje, który będzie składał się z zawartości
+pliku 1FNT, ciągu znaków podanego ze standardowego wejścia (klawiatury) i
+pliku 4V7O
+
+Zadanie 4. Wyświetl po 5 pierwszych linii wszystkich plików w swoim katalogu domowym w taki sposób, aby nie były wyświetlane ich nazwy.
+
+Zadanie 5. 
+Wyświetl linie o numerach 3, 4 i 5 z pliku 1FNT.pdb
+
+Zadanie 6. 
+Wyświetl linie o numerach 7, 6 i 5 od końca pliku 1FNT (fasta)
+
+Zadanie 7. 
+Wyświetl zawartość /etc/passwd w jednej linii
+
+Zadanie 8. 
+Za pomocą filtru tr wykonaj modyfikację pliku, polegającą na umieszczeniu każdego
+słowa w osobnej linii.
+
+Zadanie 9. 
+Zlicz wszystkie pliki znajdujące się w katalogu /etc i jego podkatalogach
+
+Zadanie 10. 
+Napisać polecenie zliczające sumę znaków z pierwszych trzech linii pliku /etc/passwd
+
+Zadanie 11. 
+Wyświetl listę plików z aktualnego katalogu, zamieniając wszystkie małe litery na duże. [ls, tr]
+
+Zadanie 12. 
+Wyświetl listę praw dostępu do plików w aktualnym katalogu, ich rozmiar i nazwę [ls]
+
+Zadanie 13. 
+Wyświetl listę plików w aktualnym katalogu, posortowaną według rozmiaru pliku [ls, sort]
+
+Zadanie 14. 
+Wyświetl zawartość pliku /etc/passwd posortowaną wg numerów UID w kolejności od największego do najmniejszego [sort]
+
+Zadanie 15. 
+Wyświetl zawartość pliku /etc/passwd posortowaną najpierw wg numerów GID w kolejności od największego do najmniejszego, a następnie UID [sort]
+
+Zadanie 16. 
+Podaj liczbę plików każdego użytkownika [find, sort, uniq]
+
+Zadanie 17. 
+Sporządź statystykę praw dostępu (dla każdego z praw dostępu podaj ile razy zostało ono
+przydzielone) [find, sort, uniq]
+
+Zadanie 18. 
+Zabij proces o identyfikatorz 1234 i bledy przekaz do pliku killerr.txt natomiast. Komunikaty informacyjne do pliku killout.txt [kill, ?> zamiast ? wstaw właściwe cyfry]
+
+Zadanie 19. 
+Zabij proces o identyfikatorz 1234 i przekaz bledy na standardowe wyjscie (Na ekran) [?>&? zamiast ? wstaw właściwe cyfry]
+Zadanie 20*.
+Zapisz sekwencję DNA np.: 
+TTTTTAAAGAAAAGAAAAAATAATCCAAACTCCTCTTCCTCATAAGAC
+w pliku i zapisz sekwencję polecenie (w potoku), które umożliwi wygenerowanie sekwencji odwrotnie komplementarnej.
+
+Zadanie 21*. 
+Napisz skrypt w bash, który dla pliku PDB lub mmCIF wypisze sekwencje aminokwasów odczytanych z rekordów ATOM.
+ 

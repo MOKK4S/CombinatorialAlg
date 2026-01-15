@@ -3,7 +3,6 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -25,31 +24,56 @@ struct Graph {
     vector<vector<size_t>> in_neighbors;
 };
 
-// Funkcja pomocnicza: na podstawie liczby wierzchołków, offsetu i listy łuków
-// buduje pełną strukturę Graph wraz z listami sąsiedztwa. Po drodze sprawdza,
-// czy łuki nie odwołują się do wierzchołków spoza zakresu.
-// Pseudokod:
-// 1. Utwórz pustą strukturę Graph i przypisz node_count oraz index_offset.
-// 2. Przekopiuj listę łuków i zainicjalizuj tablice sąsiedztwa (out_neighbors, in_neighbors).
-// 3. Dla każdego łuku (u, v):
-//      a) sprawdź, czy indeksy mieszczą się w zakresie,
-//      b) dopisz v do listy następników u,
-//      c) dopisz u do listy poprzedników v.
-// 4. Zwróć gotowy graf.
+// Obcina białe znaki z początku i końca napisu.
+// Używamy prostej pętli while zamiast wywołań algorytmów STL,
+// żeby było łatwiej prześledzić kolejne kroki.
+void trim_spaces(string &text) {
+    while (!text.empty() && (text.front() == ' ' || text.front() == '\t' || text.front() == '\n' ||
+                             text.front() == '\r')) {
+        text.erase(text.begin());
+    }
+    while (!text.empty() && (text.back() == ' ' || text.back() == '\t' || text.back() == '\n' ||
+                             text.back() == '\r')) {
+        text.pop_back();
+    }
+}
+
+// Sprawdza, czy napis składa się wyłącznie z cyfr.
+// Dzięki temu możemy rozróżnić pusty Enter od numeru grafu.
+bool is_number_string(const string &text) {
+    if (text.empty()) {
+        return false;
+    }
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (!isdigit(static_cast<unsigned char>(text[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Funkcja pomocnicza: buduje pełną strukturę Graph z listą sąsiedztwa.
+// Tutaj celowo używamy prostych pętli i kopiujemy dane,
+// żeby kod był maksymalnie czytelny dla początkującego.
 Graph make_graph(size_t node_count, size_t index_offset, vector<pair<size_t, size_t>> edges) {
     Graph graph{};
     graph.node_count = node_count;
     graph.index_offset = index_offset;
-    graph.edges = std::move(edges);
-    graph.out_neighbors.assign(node_count, {});
-    graph.in_neighbors.assign(node_count, {});
+    graph.edges = edges;
+    graph.out_neighbors.clear();
+    graph.in_neighbors.clear();
+    graph.out_neighbors.resize(node_count);
+    graph.in_neighbors.resize(node_count);
 
-    for (const auto &edge : graph.edges) {
-        if (edge.first >= node_count || edge.second >= node_count) {
+    // Każdy łuk dopisujemy ręcznie do listy następników i poprzedników.
+    for (size_t i = 0; i < graph.edges.size(); ++i) {
+        const size_t from = graph.edges[i].first;
+        const size_t to = graph.edges[i].second;
+        if (from >= node_count || to >= node_count) {
             throw runtime_error("Edge endpoint exceeds node count.");
         }
-        graph.out_neighbors[edge.first].push_back(edge.second);
-        graph.in_neighbors[edge.second].push_back(edge.first);
+        graph.out_neighbors[from].push_back(to);
+        graph.in_neighbors[to].push_back(from);
     }
 
     return graph;
@@ -74,7 +98,10 @@ class DisjointSet {
 public:
     explicit DisjointSet(size_t size) : parent(size) {
         // parent[i] = i na start, każdy element w swoim zbiorze.
-        iota(parent.begin(), parent.end(), 0);
+        // Robimy to jawnie w pętli, żeby było jasne, co się dzieje.
+        for (size_t i = 0; i < parent.size(); ++i) {
+            parent[i] = i;
+        }
     }
 
     // Znalezienie reprezentanta zbioru z kompresją ścieżki.
@@ -123,8 +150,9 @@ Graph parse_graph_stream(istream &graph_stream, const string &source_label) {
         throw runtime_error("Invalid header in graph file: " + source_label);
     }
 
+    // Wczytujemy wszystkie łuki do prostego wektora.
+    // Nie używamy rezerwacji pamięci ani zaawansowanych konstrukcji.
     vector<pair<size_t, size_t>> edges;
-    edges.reserve(edge_count);
 
     bool uses_zero_index = false;
     for (size_t i = 0; i < edge_count; ++i) {
@@ -134,7 +162,7 @@ Graph parse_graph_stream(istream &graph_stream, const string &source_label) {
         if (!graph_stream) {
             throw runtime_error("Invalid edge list in graph file: " + source_label);
         }
-        edges.emplace_back(u, v);
+        edges.push_back({u, v});
         if (u == 0 || v == 0) {
             uses_zero_index = true;
         }
@@ -144,21 +172,24 @@ Graph parse_graph_stream(istream &graph_stream, const string &source_label) {
     // W przeciwnym razie traktujemy wejście jako 1‑indeksowe.
     const size_t index_offset = uses_zero_index ? 0 : 1;
     vector<pair<size_t, size_t>> normalized_edges;
-    normalized_edges.reserve(edges.size());
 
-    for (const auto &edge : edges) {
-        if (edge.first < index_offset || edge.second < index_offset) {
+    // Normalizujemy każdy łuk w prostej pętli.
+    for (size_t i = 0; i < edges.size(); ++i) {
+        const size_t u_raw = edges[i].first;
+        const size_t v_raw = edges[i].second;
+
+        if (u_raw < index_offset || v_raw < index_offset) {
             throw runtime_error("Edge endpoint below expected offset in " + source_label);
         }
-        const size_t u = edge.first - index_offset;
-        const size_t v = edge.second - index_offset;
+        const size_t u = u_raw - index_offset;
+        const size_t v = v_raw - index_offset;
         if (u >= node_count || v >= node_count) {
             throw runtime_error("Edge endpoint exceeds declared node count in " + source_label);
         }
-        normalized_edges.emplace_back(u, v);
+        normalized_edges.push_back({u, v});
     }
 
-    return make_graph(node_count, index_offset, std::move(normalized_edges));
+    return make_graph(node_count, index_offset, normalized_edges);
 }
 
 // Funkcja, która próbuje wczytać graf z kilku możliwych ścieżek.
@@ -233,20 +264,11 @@ string save_graph_with_candidates(const Graph &graph,
 }
 
 // Główny pomysł odtwarzania grafu H:
-//  * każdy wierzchołek G traktujemy jako łuk w H,
-//  * dla każdego wierzchołka w G tworzymy dwa "końce" łuku (początek i koniec),
-//  * następnie, dla każdego łuku (u, v) w G, łączymy koniec łuku odpowiadającego u
-//    z początkiem łuku odpowiadającego v,
-//  * po scaleniu za pomocą DSU grupujemy końce łuków w wierzchołki H.
-// Pseudokod:
-// 1. Jeśli graf G ma 0 wierzchołków, zwróć pusty graf H.
-// 2. Dla każdego wierzchołka i w G:
-//      a) przypisz identyfikatory tail_ids[i] i head_ids[i] (początek/koniec łuku H),
-//      b) użyj DSU do połączenia head_ids[u] i tail_ids[v] dla każdej krawędzi (u, v) w G.
-// 3. Po sklejeniu końców:
-//      a) przejdź przez wszystkie tail/head i przypisz im kolejne numery wierzchołków H,
-//      b) dla każdego wierzchołka G dodaj łuk (tail_id, head_id) do grafu H.
-// 4. Zwróć utworzony graf H (0-indeksowy).
+//  * każdy wierzchołek G traktujemy jako łuk w H (to odwraca proces budowania grafu liniowego),
+//  * dla wierzchołka i w G tworzymy dwa "końce" łuku w H: tail_ids[i] (początek) i head_ids[i] (koniec),
+//  * każda krawędź (u, v) w G mówi, że koniec łuku u styka się z początkiem łuku v, więc łączymy je w DSU,
+//  * po sklejeniu grupy końców stają się wierzchołkami H; odczytujemy numery z DSU i tworzymy łuki H.
+// Na papierze to odpowiedź na pytanie: „Jaki graf H ma graf liniowy równy G?”.
 Graph build_candidate_original(const Graph &conjugated) {
     if (conjugated.node_count == 0) {
         return make_graph(0, 0, {});
@@ -267,35 +289,38 @@ Graph build_candidate_original(const Graph &conjugated) {
 
     // Dla każdego łuku (u, v) w G sklejamy koniec łuku odpowiadającego u
     // z początkiem łuku odpowiadającego v w H.
-    for (const auto &edge : conjugated.edges) {
-        const size_t head_id = head_ids[edge.first];
-        const size_t tail_id = tail_ids[edge.second];
+    // Łączenie końców: koniec łuku u sklejamy z początkiem łuku v.
+    for (size_t i = 0; i < conjugated.edges.size(); ++i) {
+        const size_t head_id = head_ids[conjugated.edges[i].first];
+        const size_t tail_id = tail_ids[conjugated.edges[i].second];
         disjoint_set.unite(head_id, tail_id);
     }
 
     // Przydzielamy nowe numery wierzchołkom H na podstawie reprezentantów z DSU.
     vector<size_t> root_to_id(endpoint_count, numeric_limits<size_t>::max());
     size_t next_id = 0;
-    auto map_endpoint = [&](size_t endpoint) {
-        const size_t root = disjoint_set.find(endpoint);
-        size_t &assigned = root_to_id[root];
-        if (assigned == numeric_limits<size_t>::max()) {
-            assigned = next_id++;
-        }
-        return assigned;
-    };
 
     // Teraz każdy wierzchołek G (każdy "łuk") staje się jednym łukiem w H.
     vector<pair<size_t, size_t>> edges;
-    edges.reserve(conjugated.node_count);
     for (size_t vertex = 0; vertex < conjugated.node_count; ++vertex) {
-        const size_t tail = map_endpoint(tail_ids[vertex]);
-        const size_t head = map_endpoint(head_ids[vertex]);
-        edges.emplace_back(tail, head);
+        // tail_root / head_root to identyfikatory grup w DSU.
+        const size_t tail_root = disjoint_set.find(tail_ids[vertex]);
+        if (root_to_id[tail_root] == numeric_limits<size_t>::max()) {
+            root_to_id[tail_root] = next_id++;
+        }
+        const size_t tail = root_to_id[tail_root];
+
+        const size_t head_root = disjoint_set.find(head_ids[vertex]);
+        if (root_to_id[head_root] == numeric_limits<size_t>::max()) {
+            root_to_id[head_root] = next_id++;
+        }
+        const size_t head = root_to_id[head_root];
+
+        edges.push_back({tail, head});
     }
 
     // index_offset = 0, bo H przechowujemy wewnętrznie jako 0‑indeksowy.
-    return make_graph(next_id, 0, std::move(edges));
+    return make_graph(next_id, 0, edges);
 }
 
 // Buduje graf liniowy (sprzężony) z grafu H:
@@ -309,7 +334,6 @@ Graph build_candidate_original(const Graph &conjugated) {
 Graph build_line_digraph(const Graph &graph) {
     vector<pair<size_t, size_t>> edges;
     const size_t vertex_count = graph.edges.size();
-    edges.reserve(vertex_count * 2);
 
     for (size_t i = 0; i < vertex_count; ++i) {
         const pair<size_t, size_t> &edge_i = graph.edges[i];
@@ -318,12 +342,12 @@ Graph build_line_digraph(const Graph &graph) {
             const pair<size_t, size_t> &edge_j = graph.edges[j];
             const size_t tail_j = edge_j.first;
             if (head_i == tail_j) {
-                edges.emplace_back(i, j);
+                edges.push_back({i, j});
             }
         }
     }
 
-    return make_graph(vertex_count, 0, std::move(edges));
+    return make_graph(vertex_count, 0, edges);
 }
 
 // Porównuje dwa grafy po liczbie wierzchołków oraz multizbiorze łuków.
@@ -363,7 +387,7 @@ bool recover_original_graph(const Graph &graph, Graph &original_graph) {
     if (!graphs_equal(graph, reconstructed)) {
         return false;
     }
-    original_graph = std::move(candidate);
+    original_graph = candidate;
     return true;
 }
 
@@ -442,19 +466,9 @@ int main(int argc, char **argv) {
         cout << "Enter graph number (e.g., 3 for graph3.txt) or press Enter for defaults: " << flush;
         string line;
         if (getline(cin, line)) {
-            auto trim = [](string &text) {
-                const auto first = text.find_first_not_of(" \t\r\n");
-                if (first == string::npos) {
-                    text.clear();
-                    return;
-                }
-                const auto last = text.find_last_not_of(" \t\r\n");
-                text = text.substr(first, last - first + 1);
-            };
-            trim(line);
-            const bool numeric =
-                !line.empty() && all_of(line.begin(), line.end(), [](unsigned char ch) { return isdigit(ch); });
-            if (numeric) {
+            // Używamy naszych prostych helperów: trim_spaces + is_number_string.
+            trim_spaces(line);
+            if (is_number_string(line)) {
                 chosen_id = line;
             }
         }

@@ -1,0 +1,32 @@
+Dla plików PDB o identyfikatorach 3GAU i 2KYV za pomocą komend linuksowych wykonaj następujące operacje:
+Zlicz liczbę wszystkich atomów (z pominięciem heteroatomów) - wykorzystaj do tego następujące polecenia: grep i wc. Całe polecenie należy zapisać w pojedynczej linii.
+Podaj liczbę modeli zapisanych w pojedynczym pliku.
+Dla każdego modelu w pliku PDB wypisz jego numer i wchodzące w jego skład identyfikatory łańcuchów (chainID). Jeśli w pliku jest tylko jeden model (nie ma rekordu MODEL), to wypisz tylko identyfikatory łańcuchów.
+Zamień w pliku PDB identyfikatory histydyny z his na hsd (a potem na odwrót) - spróbuj użyć do tego sed-a, zmodyfikowany plik może zostać zapisany pod nową nazwą (zastąpienie nie musi być realizowane w miejscu)
+Napisz skrypty w
+a) bash (szablon kodu poniżej)
+b) awk
+c) w Pythonie (opcjonalnie)
+Które dla podanego jako parametr wywołania pliku PDB wypisze identyfikatory aminokwasów w notacji trzyliterowej (optymalnie z podziałem na łańcuchy / modele). Zastanów się jak można by zmodyfikować zaproponowany kod, aby zamiast identyfikatorów trzyliterowych wypisywał  je w postaci jednoliterowej
+Informacje pomocnicze:
+Format rekordów w pliku PDB:
+http://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
+
+Szkielet kodu w bash odczytujący dane z pliku (o nazwie podanej jako parametr wywołania), wiersz po wierszu:
+================
+#!/bin/bash
+name=$1
+#Wykorzystaj:
+#1. Pętle: https://www.gnu.org/software/bash/manual/bash.html#Looping-Constructs
+#2. Odczyt z pliku linia po linii: https://www.cyberciti.biz/faq/unix-howto-read-line-by-line-from-file/
+#3. Here strings: https://tldp.org/LDP/abs/html/x17837.html
+#4. Przypisywanie wyników komend do zmiennych (np. wyników grep): https://www.cyberciti.biz/faq/unix-linux-bsd-appleosx-bash-assign-variable-command-output/
+#5. Wyrażenia warunkowe (conditional constructs): https://www.gnu.org/software/bash/manual/html_node/Conditional-Constructs.html
+#6. Substrings: https://stackabuse.com/substrings-in-bash/
+temp="empty"
+while IFS= read -r line
+do
+     echo "$line"  
+done < "$name"
+
+W sprawozdaniu umieść tylko rozwiązanie zadania 5 (można wgrać skrypty jako pliki tekstowe - .txt)

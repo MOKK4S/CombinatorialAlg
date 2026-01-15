@@ -1,0 +1,323 @@
+# Exercise3/exe3.cpp line-by-line walkthrough
+
+## Includes and namespace
+- `#include <iostream>`: Enables standard input/output streams.
+- `#include <fstream>`: Enables file stream I/O.
+- `#include <vector>`: Enables `std::vector`.
+- `#include <string>`: Enables `std::string`.
+- `#include <sstream>`: Enables string stream parsing.
+- `#include <map>`: Enables `std::map`.
+- `#include <algorithm>`: Enables algorithms like `sort`.
+- `#include <cstdlib>`: Enables `atoi`.
+- `using namespace std;`: Brings standard library names into the global namespace.
+
+## struct Sequence
+- `struct Sequence`: Declares a structure to hold one sequence and its quality.
+- `{`: Begins the struct body.
+- `string id;`: Stores the FASTA identifier.
+- `string data;`: Stores the raw nucleotide sequence.
+- `vector<int> quality;`: Stores per-base quality values.
+- `};`: Ends the struct definition.
+
+## struct Node
+- `struct Node`: Declares a graph node for one k-mer occurrence.
+- `{`: Begins the struct body.
+- `int seq_index;`: Index of the source sequence.
+- `int position_original;`: 1-based original position of the k-mer start.
+- `string chunk;`: The k-mer string itself.
+- `};`: Ends the struct definition.
+
+## bool read_fasta(...)
+- `bool read_fasta(const string& path, vector<string>& ids, vector<string>& sequences)`: Declares a function that reads a FASTA file into id and sequence arrays.
+- `{`: Starts the function body.
+- `ifstream file(path);`: Opens the file path for reading.
+- `if (!file.is_open())`: Checks if the file could not be opened.
+- `{`: Starts the error handling block.
+- `cerr << "Nie udalo sie otworzyc pliku fasta: " << path << "\n";`: Prints an error message to stderr.
+- `return false;`: Signals failure.
+- `}`: Ends the error handling block.
+- `string line;`: Buffer for the current line.
+- `string current_id;`: Current sequence id being read.
+- `string current_sequence;`: Current sequence data being built.
+- `while (getline(file, line))`: Reads the file line by line.
+- `{`: Starts the loop body.
+- `if (line.empty())`: Skips empty lines.
+- `continue;`: Moves to the next line.
+- `if (line[0] == '>')`: Detects a header line.
+- `{`: Starts the header handling block.
+- `if (!current_id.empty())`: Checks if a previous entry is pending.
+- `{`: Starts the previous-entry block.
+- `ids.push_back(current_id);`: Stores the previous id.
+- `sequences.push_back(current_sequence);`: Stores the previous sequence.
+- `}`: Ends the previous-entry block.
+- `current_id = line.substr(1);`: Sets current id to header without `>`.
+- `current_sequence.clear();`: Clears the sequence buffer.
+- `}`: Ends the header handling block.
+- `else`: Handles sequence lines.
+- `{`: Starts the sequence line block.
+- `for (char c : line)`: Iterates characters in the line.
+- `{`: Starts the character loop.
+- `if (!isspace(static_cast<unsigned char>(c)))`: Skips whitespace.
+- `current_sequence.push_back(c);`: Appends non-whitespace characters.
+- `}`: Ends the character loop.
+- `}`: Ends the sequence line block.
+- `}`: Ends the line-reading loop.
+- `if (!current_id.empty())`: Checks if there is a final entry to store.
+- `{`: Starts the final-entry block.
+- `ids.push_back(current_id);`: Stores the last id.
+- `sequences.push_back(current_sequence);`: Stores the last sequence.
+- `}`: Ends the final-entry block.
+- `return true;`: Signals success.
+- `}`: Ends the function.
+
+## bool read_qual(...)
+- `bool read_qual(const string& path, vector<string>& ids, vector<vector<int>>& qualities)`: Declares a function to read QUAL data.
+- `{`: Starts the function body.
+- `ifstream file(path);`: Opens the QUAL file for reading.
+- `if (!file.is_open())`: Checks for file open failure.
+- `{`: Starts the error handling block.
+- `cerr << "Nie udalo sie otworzyc pliku qual: " << path << "\n";`: Prints an error message.
+- `return false;`: Signals failure.
+- `}`: Ends the error handling block.
+- `string line;`: Buffer for the current line.
+- `string current_id;`: Current sequence id being read.
+- `vector<int> current_quality;`: Current list of quality values.
+- `while (getline(file, line))`: Reads the file line by line.
+- `{`: Starts the loop body.
+- `if (line.empty())`: Skips empty lines.
+- `continue;`: Moves to the next line.
+- `if (line[0] == '>')`: Detects a header line.
+- `{`: Starts the header handling block.
+- `if (!current_id.empty())`: Checks if a previous entry is pending.
+- `{`: Starts the previous-entry block.
+- `ids.push_back(current_id);`: Stores the previous id.
+- `qualities.push_back(current_quality);`: Stores the previous quality vector.
+- `}`: Ends the previous-entry block.
+- `current_id = line.substr(1);`: Sets current id to header without `>`.
+- `current_quality.clear();`: Clears the quality buffer.
+- `}`: Ends the header handling block.
+- `else`: Handles quality lines.
+- `{`: Starts the quality line block.
+- `istringstream iss(line);`: Wraps the line for integer parsing.
+- `int value = 0;`: Initializes a parsed value.
+- `while (iss >> value)`: Parses integers from the line.
+- `current_quality.push_back(value);`: Appends each parsed value.
+- `}`: Ends the quality line block.
+- `}`: Ends the line-reading loop.
+- `if (!current_id.empty())`: Checks if there is a final entry to store.
+- `{`: Starts the final-entry block.
+- `ids.push_back(current_id);`: Stores the last id.
+- `qualities.push_back(current_quality);`: Stores the last quality list.
+- `}`: Ends the final-entry block.
+- `return true;`: Signals success.
+- `}`: Ends the function.
+
+## bool load_sequences(...)
+- `bool load_sequences(const string& fasta_path, const string& qual_path, vector<Sequence>& sequences)`: Declares a loader that combines FASTA and QUAL into `Sequence` objects.
+- `{`: Starts the function body.
+- `vector<string> fasta_ids;`: Holds FASTA ids.
+- `vector<string> fasta_sequences;`: Holds FASTA sequences.
+- `if (!read_fasta(fasta_path, fasta_ids, fasta_sequences))`: Reads FASTA and checks for failure.
+- `return false;`: Propagates failure.
+- `vector<string> qual_ids;`: Holds QUAL ids.
+- `vector<vector<int>> qual_values;`: Holds QUAL arrays.
+- `if (!read_qual(qual_path, qual_ids, qual_values))`: Reads QUAL and checks for failure.
+- `return false;`: Propagates failure.
+- `if (fasta_ids.size() != qual_ids.size())`: Checks count mismatch.
+- `{`: Starts mismatch block.
+- `cerr << "Liczba sekwencji w plikach fasta i qual nie jest taka sama\n";`: Prints an error message.
+- `return false;`: Signals failure.
+- `}`: Ends mismatch block.
+- `for (size_t i = 0; i < fasta_ids.size(); i++)`: Iterates through entries.
+- `{`: Starts the loop body.
+- `if (fasta_ids[i] != qual_ids[i])`: Checks id order mismatch.
+- `{`: Starts mismatch block.
+- `cerr << "Nie zgadza sie kolejnosc identyfikatorow: " << fasta_ids[i] << " vs " << qual_ids[i] << "\n";`: Prints an error.
+- `return false;`: Signals failure.
+- `}`: Ends mismatch block.
+- `if (fasta_sequences[i].size() != qual_values[i].size())`: Checks length mismatch.
+- `{`: Starts mismatch block.
+- `cerr << "Dlugosc sekwencji i listy jakosci nie jest taka sama dla " << fasta_ids[i] << "\n";`: Prints an error.
+- `return false;`: Signals failure.
+- `}`: Ends mismatch block.
+- `Sequence seq;`: Creates a `Sequence` instance.
+- `seq.id = fasta_ids[i];`: Stores the id.
+- `seq.data = fasta_sequences[i];`: Stores the sequence.
+- `seq.quality = qual_values[i];`: Stores the quality vector.
+- `sequences.push_back(seq);`: Appends the sequence to the output list.
+- `}`: Ends the loop body.
+- `return true;`: Signals success.
+- `}`: Ends the function.
+
+## void filter_sequence(...)
+- `void filter_sequence(const Sequence& input, int threshold, string& filtered, vector<int>& original_positions)`: Declares a filter that removes low-quality positions.
+- `{`: Starts the function body.
+- `for (size_t i = 0; i < input.data.size(); i++)`: Loops over each position.
+- `{`: Starts the loop body.
+- `if (input.quality[i] >= threshold)`: Checks if quality passes the threshold.
+- `{`: Starts the keep block.
+- `filtered.push_back(input.data[i]);`: Adds the nucleotide to the filtered string.
+- `original_positions.push_back(static_cast<int>(i) + 1);`: Stores 1-based original position.
+- `}`: Ends the keep block.
+- `}`: Ends the loop body.
+- `}`: Ends the function.
+
+## size_t count_unique_sequences(...)
+- `size_t count_unique_sequences(const vector<Node>& nodes, const vector<int>& group_nodes, int seq_count)`: Declares a helper that counts distinct sequence indices in a group.
+- `{`: Starts the function body.
+- `vector<bool> seen(seq_count, false);`: Tracks whether a sequence index was seen.
+- `size_t count = 0;`: Initializes the count.
+- `for (int idx : group_nodes)`: Iterates all node indices in the group.
+- `{`: Starts the loop body.
+- `int seq_idx = nodes[idx].seq_index;`: Reads the sequence index.
+- `if (!seen[seq_idx])`: Checks if this sequence is new.
+- `{`: Starts the new-sequence block.
+- `seen[seq_idx] = true;`: Marks it as seen.
+- `count += 1;`: Increments the count.
+- `}`: Ends the new-sequence block.
+- `}`: Ends the loop body.
+- `return count;`: Returns the number of distinct sequences.
+- `}`: Ends the function.
+
+## static bool are_compatible(...)
+- `static bool are_compatible(const Node& left, const Node& right, int distance_limit)`: Declares a compatibility predicate between two nodes.
+- `{`: Starts the function body.
+- `if (left.seq_index == right.seq_index)`: Disallows nodes from the same sequence.
+- `return false;`: Returns false when sequence indices match.
+- `return std::abs(left.position_original - right.position_original) <= distance_limit;`: Checks the distance constraint.
+- `}`: Ends the function.
+
+## vector<int> greedy_maximal_clique_in_group(...)
+- `vector<int> greedy_maximal_clique_in_group(const vector<Node>& nodes, const vector<int>& group_nodes, int seq_count, int distance_limit)`: Declares the greedy clique builder.
+- `{`: Starts the function body.
+- `if (group_nodes.empty())`: Handles empty input.
+- `return {};`: Returns an empty clique.
+- `vector<int> degrees(nodes.size(), 0);`: Initializes degree counts for all nodes.
+- `for (size_t i = 0; i < group_nodes.size(); ++i)`: Iterates nodes in the group.
+- `{`: Starts outer loop.
+- `int idx_i = group_nodes[i];`: Maps to a node index.
+- `for (size_t j = i + 1; j < group_nodes.size(); ++j)`: Iterates pairs in the group.
+- `{`: Starts inner loop.
+- `int idx_j = group_nodes[j];`: Maps the second node index.
+- `if (are_compatible(nodes[idx_i], nodes[idx_j], distance_limit))`: Checks if the pair is compatible.
+- `{`: Starts compatibility block.
+- `degrees[idx_i] += 1;`: Increments degree of first node.
+- `degrees[idx_j] += 1;`: Increments degree of second node.
+- `}`: Ends compatibility block.
+- `}`: Ends inner loop.
+- `}`: Ends outer loop.
+- `vector<int> ordered = group_nodes;`: Copies group nodes for sorting.
+- `sort(ordered.begin(), ordered.end(),`: Begins sort by degree then position.
+- `&](int a, int b) {`: Starts the comparator lambda.
+- `if (degrees[a] != degrees[b])`: Compares degree first.
+- `return degrees[a] > degrees[b];`: Higher degree first.
+- `return nodes[a].position_original < nodes[b].position_original;`: Tie-break by position.
+- `});`: Ends the sort and lambda.
+- `vector<int> clique;`: Initializes the clique list.
+- `vector<bool> used_seq(seq_count, false);`: Tracks used sequences.
+- `for (int idx : ordered)`: Iterates nodes in sorted order.
+- `{`: Starts the loop body.
+- `int seq_idx = nodes[idx].seq_index;`: Reads sequence index.
+- `if (used_seq[seq_idx])`: Skips if this sequence is already used.
+- `continue;`: Moves to the next node.
+- `bool ok = true;`: Assumes the node is compatible.
+- `for (int chosen : clique)`: Checks against all chosen nodes.
+- `{`: Starts compatibility loop.
+- `if (!are_compatible(nodes[idx], nodes[chosen], distance_limit))`: Tests compatibility.
+- `{`: Starts failure block.
+- `ok = false;`: Marks as incompatible.
+- `break;`: Stops checking.
+- `}`: Ends failure block.
+- `}`: Ends compatibility loop.
+- `if (ok)`: Adds the node if compatible with the whole clique.
+- `{`: Starts add block.
+- `clique.push_back(idx);`: Adds the node to the clique.
+- `used_seq[seq_idx] = true;`: Marks the sequence as used.
+- `}`: Ends add block.
+- `}`: Ends the loop body.
+- `return clique;`: Returns the greedy clique.
+- `}`: Ends the function.
+
+## int main(...)
+- `int main(int argc, char* argv[])`: Declares program entry point.
+- `{`: Starts the function body.
+- `if (argc != 5) {`: Validates the number of arguments.
+- `cerr << "Uzycie: " << argv[0] << " <plik_fasta> <plik_qual> <prog_wiarygodnosci> <dlugosc_podciagu>\n";`: Prints usage.
+- `return 1;`: Exits with error.
+- `}`: Ends the argument check.
+- `string fasta_path = argv[1];`: Reads FASTA path from argv.
+- `string qual_path = argv[2];`: Reads QUAL path from argv.
+- `int threshold = atoi(argv[3]);`: Parses the quality threshold.
+- `int substring_length = atoi(argv[4]);`: Parses k-mer length.
+- `if (threshold < 0) {`: Validates the threshold.
+- `cerr << "Prog wiarygodnosci musi byc nieujemny.\n";`: Prints error.
+- `return 1;`: Exits with error.
+- `}`: Ends threshold validation.
+- `if (substring_length < 4 || substring_length > 9) {`: Validates k length range.
+- `cerr << "Dlugosc podciagu musi byc w zakresie 4-9.\n";`: Prints error.
+- `return 1;`: Exits with error.
+- `}`: Ends length validation.
+- `vector<Sequence> sequences;`: Holds loaded sequences.
+- `if (!load_sequences(fasta_path, qual_path, sequences))`: Loads and validates input.
+- `return 1;`: Exits if loading failed.
+- `vector<string> filtered_data(sequences.size());`: Stores filtered sequences.
+- `vector<vector<int>> filtered_positions(sequences.size());`: Stores original positions.
+- `for (size_t i = 0; i < sequences.size(); i++)`: Loops over sequences.
+- `filter_sequence(sequences[i], threshold, filtered_data[i], filtered_positions[i]);`: Filters by quality.
+- `vector<Node> nodes;`: Stores all generated nodes.
+- `for (size_t i = 0; i < sequences.size(); i++)`: Loops over sequences to create nodes.
+- `{`: Starts outer loop.
+- `if (filtered_data[i].size() < static_cast<size_t>(substring_length))`: Skips if too short.
+- `continue;`: Moves to the next sequence.
+- `for (size_t start = 0; start + substring_length <= filtered_data[i].size(); start++)`: Slides over k-mers.
+- `{`: Starts k-mer loop.
+- `Node node;`: Creates a node.
+- `node.seq_index = static_cast<int>(i);`: Sets sequence index.
+- `node.position_original = filtered_positions[i][start];`: Sets 1-based original position.
+- `node.chunk = filtered_data[i].substr(start, substring_length);`: Extracts the k-mer.
+- `nodes.push_back(node);`: Adds the node.
+- `}`: Ends k-mer loop.
+- `}`: Ends outer loop.
+- `if (nodes.empty()) {`: Checks if no nodes were generated.
+- `cout << "Nie wygenerowano zadnych wierzcholkow. Sprobuj obnizyc prog wiarygodnosci.\n";`: Prints a message.
+- `return 0;`: Exits normally.
+- `}`: Ends the empty-nodes check.
+- `map<string, vector<int>> groups;`: Maps each k-mer to node indices.
+- `for (size_t i = 0; i < nodes.size(); i++)`: Iterates nodes.
+- `groups[nodes[i].chunk].push_back(static_cast<int>(i));`: Groups nodes by k-mer string.
+- `int distance_limit = substring_length * 10;`: Computes the positional distance threshold.
+- `vector<int> best_clique;`: Stores the best clique so far.
+- `size_t best_size = 0;`: Stores the size of the best clique.
+- `int seq_count = static_cast<int>(sequences.size());`: Caches number of sequences.
+- `for (const auto& entry : groups)`: Iterates each k-mer group.
+- `{`: Starts group loop.
+- `const vector<int>& group_nodes = entry.second;`: Reads the group node list.
+- `if (group_nodes.size() <= best_size)`: Prunes small groups.
+- `continue;`: Skips this group.
+- `if (count_unique_sequences(nodes, group_nodes, seq_count) <= best_size)`: Prunes groups with too few distinct sequences.
+- `continue;`: Skips this group.
+- `vector<int> clique = greedy_maximal_clique_in_group(nodes, group_nodes, seq_count, distance_limit);`: Builds a clique.
+- `if (clique.size() > best_size)`: Updates the best clique if larger.
+- `{`: Starts update block.
+- `best_clique = clique;`: Stores the new clique.
+- `best_size = clique.size();`: Updates the size.
+- `if (best_size == sequences.size())`: Stops early if all sequences are covered.
+- `break;`: Exits the loop.
+- `}`: Ends update block.
+- `}`: Ends group loop.
+- `if (best_clique.empty())`: Checks if no clique was found.
+- `{`: Starts empty-clique block.
+- `cout << "Nie znaleziono zadnej kliki\n";`: Prints a message.
+- `return 0;`: Exits normally.
+- `}`: Ends empty-clique block.
+- `cout << "Znaleziono strukture o rozmiarze " << best_clique.size() << ":\n";`: Prints the clique size.
+- `for (int idx : best_clique)`: Iterates selected nodes.
+- `{`: Starts the output loop.
+- `const Node& node = nodes[idx];`: Reads the node data.
+- `cout << "Sekwencja " << (node.seq_index + 1)`: Prints sequence number (1-based).
+- `<< " (" << sequences[node.seq_index].id << "), pozycja "`: Prints sequence id and position label.
+- `<< node.position_original << ", fragment: "`: Prints position and fragment label.
+- `<< node.chunk << "\n";`: Prints the k-mer string.
+- `}`: Ends the output loop.
+- `return 0;`: Exits successfully.
+- `}`: Ends the function.

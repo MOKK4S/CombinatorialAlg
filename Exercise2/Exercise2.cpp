@@ -3,8 +3,6 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <numeric>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,40 +17,55 @@ struct Graph {
     vector<vector<size_t>> in_neighbors;
 };
 
+void trim_spaces(string &text) {
+    while (!text.empty() && (text.front() == ' ' || text.front() == '\t' || text.front() == '\n' ||
+                             text.front() == '\r')) {
+        text.erase(text.begin());
+    }
+    while (!text.empty() && (text.back() == ' ' || text.back() == '\t' || text.back() == '\n' ||
+                             text.back() == '\r')) {
+        text.pop_back();
+    }
+}
+
+bool is_number_string(const string &text) {
+    if (text.empty()) {
+        return false;
+    }
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (!isdigit(static_cast<unsigned char>(text[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Graph make_graph(size_t node_count, size_t index_offset, vector<pair<size_t, size_t>> edges) {
     Graph graph{};
     graph.node_count = node_count;
     graph.index_offset = index_offset;
-    graph.edges = std::move(edges);
-    graph.out_neighbors.assign(node_count, {});
-    graph.in_neighbors.assign(node_count, {});
+    graph.edges = edges;
+    graph.out_neighbors.clear();
+    graph.in_neighbors.clear();
+    graph.out_neighbors.resize(node_count);
+    graph.in_neighbors.resize(node_count);
 
-    for (const auto &edge : graph.edges) {
-        if (edge.first >= node_count || edge.second >= node_count) {
-            throw runtime_error("Edge endpoint exceeds node count.");
-        }
-        graph.out_neighbors[edge.first].push_back(edge.second);
-        graph.in_neighbors[edge.second].push_back(edge.first);
+    for (size_t i = 0; i < graph.edges.size(); ++i) {
+        const size_t from = graph.edges[i].first;
+        const size_t to = graph.edges[i].second;
+        graph.out_neighbors[from].push_back(to);
+        graph.in_neighbors[to].push_back(from);
     }
 
     return graph;
 }
 
-string join_paths(const vector<string> &paths) {
-    string joined;
-    for (size_t i = 0; i < paths.size(); ++i) {
-        if (i > 0) {
-            joined += ", ";
-        }
-        joined += paths[i];
-    }
-    return joined;
-}
-
 class DisjointSet {
 public:
     explicit DisjointSet(size_t size) : parent(size) {
-        iota(parent.begin(), parent.end(), 0);
+        for (size_t i = 0; i < parent.size(); ++i) {
+            parent[i] = i;
+        }
     }
 
     size_t find(size_t value) {
@@ -76,26 +89,19 @@ private:
     vector<size_t> parent;
 };
 
-Graph parse_graph_stream(istream &graph_stream, const string &source_label) {
+Graph parse_graph_stream(istream &graph_stream) {
     size_t node_count = 0;
     size_t edge_count = 0;
     graph_stream >> node_count >> edge_count;
-    if (!graph_stream) {
-        throw runtime_error("Invalid header in graph file: " + source_label);
-    }
 
     vector<pair<size_t, size_t>> edges;
-    edges.reserve(edge_count);
 
     bool uses_zero_index = false;
     for (size_t i = 0; i < edge_count; ++i) {
         size_t u = 0;
         size_t v = 0;
         graph_stream >> u >> v;
-        if (!graph_stream) {
-            throw runtime_error("Invalid edge list in graph file: " + source_label);
-        }
-        edges.emplace_back(u, v);
+        edges.push_back({u, v});
         if (u == 0 || v == 0) {
             uses_zero_index = true;
         }
@@ -103,67 +109,53 @@ Graph parse_graph_stream(istream &graph_stream, const string &source_label) {
 
     const size_t index_offset = uses_zero_index ? 0 : 1;
     vector<pair<size_t, size_t>> normalized_edges;
-    normalized_edges.reserve(edges.size());
 
-    for (const auto &edge : edges) {
-        if (edge.first < index_offset || edge.second < index_offset) {
-            throw runtime_error("Edge endpoint below expected offset in " + source_label);
-        }
-        const size_t u = edge.first - index_offset;
-        const size_t v = edge.second - index_offset;
-        if (u >= node_count || v >= node_count) {
-            throw runtime_error("Edge endpoint exceeds declared node count in " + source_label);
-        }
-        normalized_edges.emplace_back(u, v);
+    for (size_t i = 0; i < edges.size(); ++i) {
+        const size_t u = edges[i].first - index_offset;
+        const size_t v = edges[i].second - index_offset;
+        normalized_edges.push_back({u, v});
     }
 
-    return make_graph(node_count, index_offset, std::move(normalized_edges));
+    return make_graph(node_count, index_offset, normalized_edges);
 }
 
-Graph load_graph(const vector<string> &candidate_paths, string &resolved_path) {
-    vector<string> attempted_paths;
+bool load_graph(const vector<string> &candidate_paths, Graph &graph, string &resolved_path) {
     for (const auto &path : candidate_paths) {
-        attempted_paths.push_back(path);
         ifstream graph_file(path);
         if (!graph_file.is_open()) {
             continue;
         }
+        graph = parse_graph_stream(graph_file);
         resolved_path = path;
-        return parse_graph_stream(graph_file, path);
+        return true;
     }
-
-    throw runtime_error("Unable to open input graph file. Tried: " + join_paths(attempted_paths));
+    return false;
 }
 
-void save_graph(const Graph &graph, const string &output_path, size_t output_offset) {
+bool save_graph(const Graph &graph, const string &output_path, size_t output_offset) {
     ofstream graph_file(output_path);
     if (!graph_file.is_open()) {
-        throw runtime_error("Unable to open output file: " + output_path);
+        return false;
     }
 
     graph_file << graph.node_count << ' ' << graph.edges.size() << '\n';
     for (const auto &edge : graph.edges) {
         graph_file << edge.first + output_offset << ' ' << edge.second + output_offset << '\n';
     }
+    return true;
 }
 
-string save_graph_with_candidates(const Graph &graph,
-                                  const vector<string> &candidate_paths,
-                                  size_t output_offset) {
-    string last_error;
+bool save_graph_with_candidates(const Graph &graph,
+                                const vector<string> &candidate_paths,
+                                size_t output_offset,
+                                string &resolved_path) {
     for (const auto &path : candidate_paths) {
-        try {
-            save_graph(graph, path, output_offset);
-            return path;
-        } catch (const exception &ex) {
-            last_error = ex.what();
+        if (save_graph(graph, path, output_offset)) {
+            resolved_path = path;
+            return true;
         }
     }
-
-    if (!last_error.empty()) {
-        throw runtime_error(last_error);
-    }
-    throw runtime_error("Unable to save graph to any of the requested paths.");
+    return false;
 }
 
 Graph build_candidate_original(const Graph &conjugated) {
@@ -181,32 +173,33 @@ Graph build_candidate_original(const Graph &conjugated) {
         head_ids[vertex] = vertex * 2 + 1;
     }
 
-    for (const auto &edge : conjugated.edges) {
-        const size_t head_id = head_ids[edge.first];
-        const size_t tail_id = tail_ids[edge.second];
+    for (size_t i = 0; i < conjugated.edges.size(); ++i) {
+        const size_t head_id = head_ids[conjugated.edges[i].first];
+        const size_t tail_id = tail_ids[conjugated.edges[i].second];
         disjoint_set.unite(head_id, tail_id);
     }
 
     vector<size_t> root_to_id(endpoint_count, numeric_limits<size_t>::max());
     size_t next_id = 0;
-    auto map_endpoint = [&](size_t endpoint) {
-        const size_t root = disjoint_set.find(endpoint);
-        size_t &assigned = root_to_id[root];
-        if (assigned == numeric_limits<size_t>::max()) {
-            assigned = next_id++;
-        }
-        return assigned;
-    };
 
     vector<pair<size_t, size_t>> edges;
-    edges.reserve(conjugated.node_count);
     for (size_t vertex = 0; vertex < conjugated.node_count; ++vertex) {
-        const size_t tail = map_endpoint(tail_ids[vertex]);
-        const size_t head = map_endpoint(head_ids[vertex]);
-        edges.emplace_back(tail, head);
+        const size_t tail_root = disjoint_set.find(tail_ids[vertex]);
+        if (root_to_id[tail_root] == numeric_limits<size_t>::max()) {
+            root_to_id[tail_root] = next_id++;
+        }
+        const size_t tail = root_to_id[tail_root];
+
+        const size_t head_root = disjoint_set.find(head_ids[vertex]);
+        if (root_to_id[head_root] == numeric_limits<size_t>::max()) {
+            root_to_id[head_root] = next_id++;
+        }
+        const size_t head = root_to_id[head_root];
+
+        edges.push_back({tail, head});
     }
 
-    return make_graph(next_id, 0, std::move(edges));
+    return make_graph(next_id, 0, edges);
 }
 
 Graph build_line_digraph(const Graph &graph) {
@@ -226,7 +219,7 @@ Graph build_line_digraph(const Graph &graph) {
         }
     }
 
-    return make_graph(vertex_count, 0, std::move(edges));
+    return make_graph(vertex_count, 0, edges);
 }
 
 bool graphs_equal(const Graph &lhs, const Graph &rhs) {
@@ -266,7 +259,7 @@ bool recover_original_graph(const Graph &graph, Graph &original_graph) {
     if (!graphs_equal(graph, reconstructed)) {
         return false;
     }
-    original_graph = std::move(candidate);
+    original_graph = candidate;
     return true;
 }
 
@@ -299,6 +292,7 @@ bool is_linear_graph(const Graph &graph) {
 
     return true;
 }
+
 int main(int argc, char **argv) {
     vector<string> input_candidates;
     vector<string> output_candidates;
@@ -308,19 +302,8 @@ int main(int argc, char **argv) {
         cout << "Enter graph number (e.g., 3 for graph3.txt) or press Enter for defaults: " << flush;
         string line;
         if (getline(cin, line)) {
-            auto trim = [](string &text) {
-                const auto first = text.find_first_not_of(" \t\r\n");
-                if (first == string::npos) {
-                    text.clear();
-                    return;
-                }
-                const auto last = text.find_last_not_of(" \t\r\n");
-                text = text.substr(first, last - first + 1);
-            };
-            trim(line);
-            const bool numeric =
-                !line.empty() && all_of(line.begin(), line.end(), [](unsigned char ch) { return isdigit(ch); });
-            if (numeric) {
+            trim_spaces(line);
+            if (is_number_string(line)) {
                 chosen_id = line;
             }
         }
@@ -348,32 +331,31 @@ int main(int argc, char **argv) {
         output_candidates.emplace_back("graph_out.txt");
     }
 
-    try {
-        string resolved_input;
-        Graph graph = load_graph(input_candidates, resolved_input);
-        cout << "Loaded graph from " << resolved_input << " with " << graph.node_count << " vertices and "
-             << graph.edges.size() << " edges.\n";
-
-        const bool one_graph = is_one_graph(graph);
-        cout << "Graph is one-graph (no multiple edges): " << boolalpha << one_graph << '\n';
-
-        Graph original_graph;
-        const bool conjugated = recover_original_graph(graph, original_graph);
-        cout << "Graph is conjugated: " << boolalpha << conjugated << '\n';
-        if (!conjugated) {
-            return 0;
-        }
-
-        const bool linear = is_linear_graph(original_graph);
-        cout << "Original graph is linear: " << boolalpha << linear << '\n';
-
-        const string resolved_output =
-            save_graph_with_candidates(original_graph, output_candidates, graph.index_offset);
-        cout << "Original graph saved to " << resolved_output << '\n';
-    } catch (const exception &ex) {
-        cerr << "Error: " << ex.what() << '\n';
-        return 1;
+    string resolved_input;
+    Graph graph;
+    if (!load_graph(input_candidates, graph, resolved_input)) {
+        cout << "Unable to load graph.\n";
+        return 0;
     }
+    cout << "Loaded graph from " << resolved_input << " with " << graph.node_count << " vertices and "
+         << graph.edges.size() << " edges.\n";
+
+    Graph original_graph;
+    const bool conjugated = recover_original_graph(graph, original_graph);
+    cout << "Graph is conjugated: " << boolalpha << conjugated << '\n';
+    if (!conjugated) {
+        return 0;
+    }
+
+    const bool linear = is_linear_graph(original_graph);
+    cout << "Original graph is linear: " << boolalpha << linear << '\n';
+
+    string resolved_output;
+    if (!save_graph_with_candidates(original_graph, output_candidates, graph.index_offset, resolved_output)) {
+        cout << "Unable to save graph.\n";
+        return 0;
+    }
+    cout << "Original graph saved to " << resolved_output << '\n';
 
     return 0;
 }
