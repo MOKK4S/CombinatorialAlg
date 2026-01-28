@@ -1,0 +1,23 @@
+1.      Napisz program, który znajduje w pliku tekstowym zadany ciąg znaków (wyrażenie regularne wprowadzone z linii poleceń) i zlicza liczbę jego wystąpień. Jakiego wyrażenia użyjesz do wyszukania liczb pięciocyfrowych? Jakiego wyrażenia użyjesz do znalezienia ciągów złożonych z A i dowolnego znaku innego niż x,y lub z? Jakiego wyrażenia użyjesz do sprawdzenia, czy łańcuch jest złożony z samych spacji?
+
+Zobacz: https://docs.python.org/3/library/re.html
+
+2.      Napisz program, który cyfry zamieni na słowa tj. zamiast 1 umieści w tekście „jeden” itd.
+
+3.      Napisz program, który wyszykuje powtórzenia słów i ujmuje blok powtórzonych słów w nawiasy kwadratowe. W tym celu zapoznaj się z mechanizmem odwołania wstecznego (ang. backreference). Poszukaj o tym informacji w dokumentacji Pythona: https://docs.python.org/3/howto/regex.html (szukaj słowa backreference)
+Przykład działania:
+Wejście: To jest tekst tekst tekst bardzo wazny i i istotny wrecz wrecz niezastapiony tekst 
+
+Wyjście: To jest [tekst tekst tekst] bardzo wazny [i i] istotny [wrecz wrecz] niezastapiony tekst
+
+4.      Zmodyfikuj powyższy program tak, by usuwał powtórzenia (Możesz wykorzystać do tego „named capture groups”).
+
+Przykład działania:
+
+Wejście: To jest tekst tekst tekst bardzo wazny i i istotny wrecz wrecz niezastapiony tekst Wyjście: To jest tekst bardzo wazny i istotny wrecz niezastapiony tekst
+
+5.      Zobacz przykłady wykorzystania wyrażeń regularnych do analizy sekwencji DNA:
+https://medium.com/@aarunbhardwaj/using-python-regex-for-finding-patterns-in-genomic-data-cc8a6215ed1f
+[ew. https://towardsdatascience.com/using-regular-expression-in-genetics-with-python-175e2b9395c2]
+
+Spróbuj przetestować wybrane wyrażenia na dowolnej sekwencji DNA.
